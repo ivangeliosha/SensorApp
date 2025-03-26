@@ -3,8 +3,10 @@ package ru.maslennikov.thirdProject.SensorApp.models;
 import org.hibernate.validator.constraints.Range;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity()
 @Table(name = "Measurement")
@@ -16,6 +18,8 @@ public class Measurement {
 
     @Column(name = "value")
     @Range(min = -100, max = 100)
+
+    @NotEmpty(message = "please write the value")
     private float value;
 
     @Column(name = "raining")
@@ -28,6 +32,7 @@ public class Measurement {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sensor_id", referencedColumnName = "id")
+    @NotEmpty(message = "please write the value")
     private Sensor sensor;
 
     public Measurement() {
@@ -78,5 +83,18 @@ public class Measurement {
 
     public void setMeasureTime(@NotNull LocalDateTime measureTime) {
         this.measureTime = measureTime;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Measurement that = (Measurement) o;
+        return id == that.id && Float.compare(value, that.value) == 0 && raining == that.raining && Objects.equals(measureTime, that.measureTime);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, value, raining, measureTime);
     }
 }

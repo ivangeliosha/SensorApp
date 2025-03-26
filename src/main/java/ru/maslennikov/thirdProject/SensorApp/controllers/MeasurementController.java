@@ -4,16 +4,18 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import ru.maslennikov.thirdProject.SensorApp.dto.MeasurementDto;
 import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
-import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 import ru.maslennikov.thirdProject.SensorApp.services.MeasurementService;
 import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
+import ru.maslennikov.thirdProject.SensorApp.util.MeasurementErrorResponse;
+import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedMeasurementException;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,23 +44,38 @@ public class MeasurementController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<HttpStatus> addMeasurement(@RequestBody @Valid MeasurementDto measurementDto) {
+    public ResponseEntity<HttpStatus> addMeasurement(@RequestBody @Valid MeasurementDto measurementDto,
+                                                     BindingResult bindingResult) throws NotCreatedMeasurementException {
+        if (bindingResult.hasErrors()) {
+            StringBuilder measurementsErrors = new StringBuilder();
+            bindingResult.getAllErrors().forEach(error -> measurementsErrors.append(error.getDefaultMessage()));
+            throw new NotCreatedMeasurementException(measurementsErrors.toString());
+        }
 
         measurementService.save(convertToMeasurement(measurementDto));
-
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @ExceptionHandler(NotCreatedMeasurementException.class)
+    public ResponseEntity<MeasurementErrorResponse> handleException(NotCreatedMeasurementException e) {
+    MeasurementErrorResponse response = new MeasurementErrorResponse(
+        e.getMessage(),
+        System.currentTimeMillis()
+    );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
 
     private MeasurementDto convertToMeasurementDto(Measurement measurement){
         MeasurementDto measurementDto = modelMapper.map(measurement, MeasurementDto.class);
-        measurementDto.setSensorName(measurement.getSensor().getName());
+        measurementDto.setSensor(measurement.getSensor());
         return measurementDto;
     }
-    public Measurement convertToMeasurement(MeasurementDto measurementDTO){
-        Measurement measurement = modelMapper.map(measurementDTO, Measurement.class);
-        Optional<Sensor> sensor = sensorService.findByName(measurementDTO.getSensorName());
-        measurement.setSensor(sensor.get());
-        return measurement;
+    public Measurement convertToMeasurement(MeasurementDto measurementDTO) throws NotCreatedMeasurementException {
+    Measurement measurement = modelMapper.map(measurementDTO, Measurement.class);
+    measurement.setSensor(sensorService.findByName(measurementDTO.getSensor().getName())
+        .orElseThrow(() -> new NotCreatedMeasurementException("Error")));
+    return measurement;
     }
 }
