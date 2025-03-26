@@ -61,7 +61,7 @@ public class MeasurementController {
     MeasurementErrorResponse response = new MeasurementErrorResponse(
         e.getMessage(),
         System.currentTimeMillis()
-    );//csdfsdf
+    );
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
