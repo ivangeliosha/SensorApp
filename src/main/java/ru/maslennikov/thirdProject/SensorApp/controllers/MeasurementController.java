@@ -1,22 +1,28 @@
-package ru.maslennikov.thirdProject.SensorApp.controllers;
+    package ru.maslennikov.thirdProject.SensorApp.controllers;
 
-import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.*;
-import ru.maslennikov.thirdProject.SensorApp.dto.MeasurementDto;
-import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
-import ru.maslennikov.thirdProject.SensorApp.services.MeasurementService;
-import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
-import ru.maslennikov.thirdProject.SensorApp.util.MeasurementErrorResponse;
-import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedMeasurementException;
+    import org.modelmapper.ModelMapper;
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.dao.DataIntegrityViolationException;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.ResponseEntity;
+    import org.springframework.validation.BindingResult;
+    import org.springframework.validation.FieldError;
+    import org.springframework.web.bind.annotation.*;
+    import ru.maslennikov.thirdProject.SensorApp.dto.MeasurementDto;
+    import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
+    import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
+    import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
+    import ru.maslennikov.thirdProject.SensorApp.services.MeasurementService;
+    import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
+    import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
 
-import javax.validation.Valid;
-import java.util.List;
-import java.util.stream.Collectors;
+    import javax.validation.ConstraintViolationException;
+    import javax.validation.Valid;
+    import java.sql.SQLException;
+    import java.util.List;
+    import java.util.stream.Collectors;
+
+
 
 @RestController
 @RequestMapping("/measurements")
@@ -44,37 +50,76 @@ public class MeasurementController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<HttpStatus> addMeasurement(@RequestBody @Valid MeasurementDto measurementDto,
-                                                     BindingResult bindingResult) throws NotCreatedMeasurementException {
+    public ResponseEntity<HttpStatus> addMeasurement(
+            @Valid @RequestBody MeasurementDto measurementDto,
+            BindingResult bindingResult) throws NotCreatedException {
+
+        // Проверка на ошибки валидации
         if (bindingResult.hasErrors()) {
-            StringBuilder measurementsErrors = new StringBuilder();
-            bindingResult.getAllErrors().forEach(error -> measurementsErrors.append(error.getDefaultMessage()));
-            throw new NotCreatedMeasurementException(measurementsErrors.toString());
+            StringBuilder errorMsg = new StringBuilder();
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            for (FieldError error : errors) {
+                errorMsg.append(error.getField())
+                        .append(" - ").append(error.getDefaultMessage())
+                        .append("; ");
+            }
+
+            if (errorMsg.length() > 0) {
+                throw new NotCreatedException(errorMsg.toString());
+            }
         }
 
-        measurementService.save(convertToMeasurement(measurementDto));
+        try {
+            // Сохранение измерения
+            measurementService.save(convertToMeasurement(measurementDto));
+        } catch (DataIntegrityViolationException e) {
+            // Обработка ошибок базы данных (например, нарушение ограничений уникальности или not-null)
+            String errorMessage = "Database constraint violation occurred,correct your request. ";//Произошло нарушение ограничений базы данных.
+
+            // Проверяем наличие корневого исключения SQLException
+            if (e.getCause() instanceof SQLException) {
+                SQLException sqlException = (SQLException) e.getCause();
+                // Выводим код ошибки или дополнительную информацию из SQLException
+                errorMessage += "SQLState: " + sqlException.getSQLState() + ", ErrorCode: "+ sqlException.getErrorCode();
+            }
+
+            // Вставляем дополнительные детали ошибки
+            errorMessage += "Error details: " + e.getMessage();
+
+            throw new NotCreatedException(errorMessage);
+        }
+
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @ExceptionHandler(NotCreatedMeasurementException.class)
-    public ResponseEntity<MeasurementErrorResponse> handleException(NotCreatedMeasurementException e) {
-    MeasurementErrorResponse response = new MeasurementErrorResponse(
-        e.getMessage(),
-        System.currentTimeMillis()
-    );//sdvsfvsvedwdfwdfw
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-    }
 
 
-    private MeasurementDto convertToMeasurementDto(Measurement measurement){
-        MeasurementDto measurementDto = modelMapper.map(measurement, MeasurementDto.class);
-        measurementDto.setSensor(measurement.getSensor());
-        return measurementDto;
+
+    public Measurement convertToMeasurement(MeasurementDto measurementDTO) throws NotCreatedException {
+
+    if (measurementDTO == null || measurementDTO.getSensor() == null || measurementDTO.getSensor().getName() == null) {
+        throw new NotCreatedException("Sensor name must be provided or I cannot find him.");
     }
-    public Measurement convertToMeasurement(MeasurementDto measurementDTO) throws NotCreatedMeasurementException {
+
     Measurement measurement = modelMapper.map(measurementDTO, Measurement.class);
-    measurement.setSensor(sensorService.findByName(measurementDTO.getSensor().getName())
-        .orElseThrow(() -> new NotCreatedMeasurementException("Error")));
+
+    try {
+        Sensor sensor = sensorService.findByName(measurementDTO.getSensor().getName())
+                .orElseThrow(() -> new NotCreatedException("Sensor with name '"
+                        + measurementDTO.getSensor().getName() + "' not found"));
+        measurement.setSensor(sensor);
+    } catch (Exception e) {
+        throw new NotCreatedException("Error while fetching sensor data: " + e.getMessage());
+    }
+
     return measurement;
+    }
+
+
+    private MeasurementDto convertToMeasurementDto(Measurement measurement) {
+        MeasurementDto measurementDto = modelMapper.map(measurement, MeasurementDto.class);
+        Sensor sensor = measurement.getSensor();
+        measurementDto.setSensor(sensor);
+        return measurementDto;
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.web.context.request.WebRequest;
 import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
 import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
+import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -37,13 +38,21 @@ public class SensorController {
 
     @PostMapping("/registration")
     public ResponseEntity<HttpStatus> addSensor(@RequestBody @Valid SensorDto sensorDto,
-                                                BindingResult bindingResult) {
+                                                BindingResult bindingResult) throws NotCreatedException {
+
+        if (bindingResult.hasErrors()) {
+            throw new NotCreatedException(bindingResult.getAllErrors().get(0).getDefaultMessage());
+        }
+
         sensorService.save(convertToSensor(sensorDto));//todo + bindingResults
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
+
+
     @ExceptionHandler()//todo
     private ResponseEntity<HttpStatus> handleException(Exception ex, WebRequest request) {
+
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 

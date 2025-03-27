@@ -19,12 +19,12 @@ public class Measurement {
     @Column(name = "value")
     @Range(min = -100, max = 100)
 
-    @NotEmpty(message = "please write the value")
+    @NotNull(message = "please write the value")
     private float value;
 
     @Column(name = "raining")
     @NotNull(message = "Is it raining?")
-    private boolean raining;
+    private Boolean raining;
 
     @Column(name = "measure_time")
     @NotNull
@@ -32,7 +32,7 @@ public class Measurement {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sensor_id", referencedColumnName = "id")
-    @NotEmpty(message = "please write the value")
+    @NotNull(message = "please write sensor name")
     private Sensor sensor;
 
     public Measurement() {
