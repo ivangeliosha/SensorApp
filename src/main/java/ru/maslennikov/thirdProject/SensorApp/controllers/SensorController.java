@@ -2,17 +2,20 @@ package ru.maslennikov.thirdProject.SensorApp.controllers;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.WebRequest;
 import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
+import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
 import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
 import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
 
 import javax.validation.Valid;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,26 +44,55 @@ public class SensorController {
                                                 BindingResult bindingResult) throws NotCreatedException {
 
         if (bindingResult.hasErrors()) {
-            throw new NotCreatedException(bindingResult.getAllErrors().get(0).getDefaultMessage());
+            StringBuilder errorMsg = new StringBuilder();
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            for (FieldError error : errors) {
+                errorMsg.append(error.getField())
+                        .append(" - ").append(error.getDefaultMessage())
+                        .append("; ");
+            }
+
+            if (errorMsg.length() > 0) {
+                throw new NotCreatedException(errorMsg.toString());
+            }
+        }
+        try {
+            // Сохранение
+            sensorService.save(convertToSensor(sensorDto));
+        } catch (DataIntegrityViolationException e) {
+            // Обработка ошибок базы данных (например, нарушение ограничений уникальности или not-null)
+            String errorMessage = "Database constraint violation occurred,correct your request. ";//Произошло нарушение ограничений базы данных.
+
+            // Проверяем наличие корневого исключения SQLException
+            if (e.getCause() instanceof SQLException) {
+                SQLException sqlException = (SQLException) e.getCause();
+                // Выводим код ошибки или дополнительную информацию из SQLException
+                errorMessage += "SQLState: " + sqlException.getSQLState() + ", ErrorCode: "+ sqlException.getErrorCode();
+            }
+
+            // Вставляем дополнительные детали ошибки
+            errorMessage += "Error details: " + e.getMessage();
+
+            throw new NotCreatedException(errorMessage);
         }
 
-        sensorService.save(convertToSensor(sensorDto));//todo + bindingResults
-        return ResponseEntity.ok(HttpStatus.OK);
-    }
-
-
-
-    @ExceptionHandler()//todo
-    private ResponseEntity<HttpStatus> handleException(Exception ex, WebRequest request) {
-
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     private SensorDto convertToSensorDto(Sensor sensor){
         return modelMapper.map(sensor, SensorDto.class);
     }
-    private Sensor convertToSensor(SensorDto sensorDto){
-        return modelMapper.map(sensorDto, Sensor.class);
+
+    private Sensor convertToSensor(SensorDto sensorDto) throws NotCreatedException {
+
+    if (sensorDto == null || sensorDto.getName() == null) {
+        throw new NotCreatedException("Sensor name must be provided or I cannot find him.");
+    }
+
+    Sensor sensor = modelMapper.map(sensorDto, Sensor.class);
+
+
+    return sensor;
     }
 
 }

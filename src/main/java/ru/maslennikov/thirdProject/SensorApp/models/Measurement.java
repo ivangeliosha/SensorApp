@@ -1,9 +1,10 @@
 package ru.maslennikov.thirdProject.SensorApp.models;
 
-import org.hibernate.validator.constraints.Range;
+
 
 import javax.persistence.*;
-import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.DecimalMax;
+import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -17,10 +18,11 @@ public class Measurement {
     private int id;
 
     @Column(name = "value")
-    @Range(min = -100, max = 100)
+    @DecimalMin(value = "-100.0", inclusive = true)
+    @DecimalMax(value = "100.0", inclusive = true)
+    @NotNull(message = "Please write the value")
+    private Float value;
 
-    @NotNull(message = "please write the value")
-    private float value;
 
     @Column(name = "raining")
     @NotNull(message = "Is it raining?")
@@ -51,12 +53,11 @@ public class Measurement {
         this.id = id;
     }
 
-    @Range(min = -100, max = 100)
     public float getValue() {
         return value;
     }
 
-    public void setValue(@Range(min = -100, max = 100) float value) {
+    public void setValue(float value) {
         this.value = value;
     }
 

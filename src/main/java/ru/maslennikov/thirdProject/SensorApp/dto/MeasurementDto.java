@@ -1,14 +1,17 @@
 package ru.maslennikov.thirdProject.SensorApp.dto;
 
-import org.hibernate.validator.constraints.Range;
+
 import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 
+import javax.validation.constraints.DecimalMax;
+import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotNull;
 
 public class MeasurementDto {
 
     @NotNull(message = "Value cannot be null")
-    @Range(min = -100, max = 100, message = "Value must be between -100 and 100")
+    @DecimalMin(value = "-100.0", inclusive = true)
+    @DecimalMax(value = "100.0", inclusive = true)
     private Float value;
 
     @NotNull(message = "Is it raining? Cannot be null")
