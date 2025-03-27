@@ -68,7 +68,6 @@ public class MeasurementController {
                 throw new NotCreatedException(errorMsg.toString());
             }
         }
-
         try {
             // Сохранение измерения
             measurementService.save(convertToMeasurement(measurementDto));
