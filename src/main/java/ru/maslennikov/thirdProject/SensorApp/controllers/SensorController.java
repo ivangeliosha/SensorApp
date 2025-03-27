@@ -9,7 +9,6 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
-import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
 import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
 import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
@@ -43,19 +42,7 @@ public class SensorController {
     public ResponseEntity<HttpStatus> addSensor(@RequestBody @Valid SensorDto sensorDto,
                                                 BindingResult bindingResult) throws NotCreatedException {
 
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMsg = new StringBuilder();
-            List<FieldError> errors = bindingResult.getFieldErrors();
-            for (FieldError error : errors) {
-                errorMsg.append(error.getField())
-                        .append(" - ").append(error.getDefaultMessage())
-                        .append("; ");
-            }
-
-            if (errorMsg.length() > 0) {
-                throw new NotCreatedException(errorMsg.toString());
-            }
-        }
+        findErrors(bindingResult);
         try {
             // Сохранение
             sensorService.save(convertToSensor(sensorDto));
@@ -79,6 +66,22 @@ public class SensorController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    static void findErrors(BindingResult bindingResult) throws NotCreatedException {
+        if (bindingResult.hasErrors()) {
+            StringBuilder errorMsg = new StringBuilder();
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            for (FieldError error : errors) {
+                errorMsg.append(error.getField())
+                        .append(" - ").append(error.getDefaultMessage())
+                        .append("; ");
+            }
+
+            if (errorMsg.length() > 0) {
+                throw new NotCreatedException(errorMsg.toString());
+            }
+        }
+    }
+
     private SensorDto convertToSensorDto(Sensor sensor){
         return modelMapper.map(sensor, SensorDto.class);
     }
@@ -89,10 +92,8 @@ public class SensorController {
         throw new NotCreatedException("Sensor name must be provided or I cannot find him.");
     }
 
-    Sensor sensor = modelMapper.map(sensorDto, Sensor.class);
 
-
-    return sensor;
+        return modelMapper.map(sensorDto, Sensor.class);
     }
 
 }

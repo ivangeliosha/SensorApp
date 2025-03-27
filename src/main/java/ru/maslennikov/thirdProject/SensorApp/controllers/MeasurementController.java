@@ -6,17 +6,14 @@
     import org.springframework.http.HttpStatus;
     import org.springframework.http.ResponseEntity;
     import org.springframework.validation.BindingResult;
-    import org.springframework.validation.FieldError;
     import org.springframework.web.bind.annotation.*;
     import ru.maslennikov.thirdProject.SensorApp.dto.MeasurementDto;
-    import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
     import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
     import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
     import ru.maslennikov.thirdProject.SensorApp.services.MeasurementService;
     import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
     import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
 
-    import javax.validation.ConstraintViolationException;
     import javax.validation.Valid;
     import java.sql.SQLException;
     import java.util.List;
@@ -55,19 +52,7 @@ public class MeasurementController {
             BindingResult bindingResult) throws NotCreatedException {
 
         // Проверка на ошибки валидации
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMsg = new StringBuilder();
-            List<FieldError> errors = bindingResult.getFieldErrors();
-            for (FieldError error : errors) {
-                errorMsg.append(error.getField())
-                        .append(" - ").append(error.getDefaultMessage())
-                        .append("; ");
-            }
-
-            if (errorMsg.length() > 0) {
-                throw new NotCreatedException(errorMsg.toString());
-            }
-        }
+        SensorController.findErrors(bindingResult);
         try {
             // Сохранение измерения
             measurementService.save(convertToMeasurement(measurementDto));
