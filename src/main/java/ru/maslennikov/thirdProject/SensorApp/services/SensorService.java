@@ -37,4 +37,10 @@ public class SensorService {
     public Optional<Sensor> findByName(String name) {
         return sensorRepository.findByName(name);
     }
+
+    @Transactional
+    public void deleteByName(String name) {
+        sensorRepository.deleteByName(name);
+    }
+
 }

@@ -49,7 +49,8 @@ public class MeasurementDto {
         return "MeasurementDto{" +
                 "value=" + value +
                 ", raining=" + raining +
-                ", sensor=" + sensor +
+                ", sensor=" + sensor.getName() +
                 '}';
     }
+
 }

@@ -1,13 +1,22 @@
 package ru.maslennikov.thirdProject.SensorApp.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+import ru.maslennikov.thirdProject.SensorApp.dto.MeasurementDto;
 import ru.maslennikov.thirdProject.SensorApp.models.Measurement;
 import ru.maslennikov.thirdProject.SensorApp.repositories.MeasurementRepository;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MeasurementService {
@@ -31,6 +40,7 @@ public class MeasurementService {
     public int findRainingCount() {
         return measurementRepository.countByRainingTrue();
     }
+
 
 
 

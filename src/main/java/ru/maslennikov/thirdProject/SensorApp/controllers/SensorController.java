@@ -3,6 +3,7 @@ package ru.maslennikov.thirdProject.SensorApp.controllers;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -63,6 +64,16 @@ public class SensorController {
             throw new NotCreatedException(errorMessage);
         }
 
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+    @DeleteMapping("/{name}")
+    public ResponseEntity<HttpStatus> deleteSensor(@PathVariable("name") String name)
+            throws ChangeSetPersister.NotFoundException {
+        try {
+            sensorService.deleteByName(name);
+        }catch (DataIntegrityViolationException e) {
+            throw new ChangeSetPersister.NotFoundException();
+        }
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
