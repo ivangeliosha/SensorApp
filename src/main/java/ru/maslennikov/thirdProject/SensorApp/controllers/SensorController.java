@@ -3,19 +3,18 @@ package ru.maslennikov.thirdProject.SensorApp.controllers;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
-import ru.maslennikov.thirdProject.SensorApp.dto.SensorDto;
+import ru.maslennikov.thirdProject.SensorApp.dto.SensorDTO;
 import ru.maslennikov.thirdProject.SensorApp.models.Sensor;
 import ru.maslennikov.thirdProject.SensorApp.services.SensorService;
 import ru.maslennikov.thirdProject.SensorApp.util.NotCreatedException;
+import ru.maslennikov.thirdProject.SensorApp.util.NotFoundException;
+import ru.maslennikov.thirdProject.SensorApp.util.SensorValidator;
 
 import javax.validation.Valid;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,85 +25,62 @@ public class SensorController {
 
     private final SensorService sensorService;
     private final ModelMapper modelMapper;
+    private final SensorValidator sensorValidator;
 
     @Autowired
-    public SensorController(SensorService sensorService, ModelMapper modelMapper) {
+    public SensorController(SensorService sensorService, ModelMapper modelMapper, SensorValidator sensorValidator) {
         this.sensorService = sensorService;
         this.modelMapper = modelMapper;
+        this.sensorValidator = sensorValidator;
     }
 
     @GetMapping()
-    public List<SensorDto> getSensors() {
+    public List<SensorDTO> getSensors() {
         return sensorService.findAll()
-                .stream().map(this::convertToSensorDto).collect(Collectors.toList());
+                .stream().map(this::convertToSensorDTO).collect(Collectors.toList());
     }
 
     @PostMapping("/registration")
-    public ResponseEntity<HttpStatus> addSensor(@RequestBody @Valid SensorDto sensorDto,
+    public ResponseEntity<HttpStatus> addSensor(@RequestBody @Valid SensorDTO sensorDTO,
                                                 BindingResult bindingResult) throws NotCreatedException {
 
-        findErrors(bindingResult);
-        try {
-            // Сохранение
-            sensorService.save(convertToSensor(sensorDto));
-        } catch (DataIntegrityViolationException e) {
-            // Обработка ошибок базы данных (например, нарушение ограничений уникальности или not-null)
-            String errorMessage = "Database constraint violation occurred,correct your request. ";//Произошло нарушение ограничений базы данных.
+        Sensor sensorToSave = convertToSensor(sensorDTO);
 
-            // Проверяем наличие корневого исключения SQLException
-            if (e.getCause() instanceof SQLException) {
-                SQLException sqlException = (SQLException) e.getCause();
-                // Выводим код ошибки или дополнительную информацию из SQLException
-                errorMessage += "SQLState: " + sqlException.getSQLState() + ", ErrorCode: "+ sqlException.getErrorCode();
-            }
+        sensorValidator.validate(sensorToSave, bindingResult);
+        if (bindingResult.hasErrors())
+            throw new NotCreatedException(bindingResult.getAllErrors().get(0).getDefaultMessage());
 
-            // Вставляем дополнительные детали ошибки
-            errorMessage += "Error details: " + e.getMessage();
-
-            throw new NotCreatedException(errorMessage);
-        }
+        sensorService.save(sensorToSave);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+
     @DeleteMapping("/{name}")
     public ResponseEntity<HttpStatus> deleteSensor(@PathVariable("name") String name)
-            throws ChangeSetPersister.NotFoundException {
+            throws NotFoundException {
+        if (name.isEmpty() || sensorService.findByName(name).isEmpty()) {
+            throw new NotFoundException(name);
+        }
         try {
             sensorService.deleteByName(name);
-        }catch (DataIntegrityViolationException e) {
-            throw new ChangeSetPersister.NotFoundException();
+        }catch (NotFoundException e) {
+            throw new NotFoundException(e.getMessage());
         }
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    static void findErrors(BindingResult bindingResult) throws NotCreatedException {
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMsg = new StringBuilder();
-            List<FieldError> errors = bindingResult.getFieldErrors();
-            for (FieldError error : errors) {
-                errorMsg.append(error.getField())
-                        .append(" - ").append(error.getDefaultMessage())
-                        .append("; ");
-            }
+    private SensorDTO convertToSensorDTO(Sensor sensor){
+        return modelMapper.map(sensor, SensorDTO.class);
+    }
 
-            if (errorMsg.length() > 0) {
-                throw new NotCreatedException(errorMsg.toString());
-            }
+    private Sensor convertToSensor(@Valid SensorDTO sensorDTO) throws NotCreatedException {
+        try {
+            return modelMapper.map(sensorDTO, Sensor.class);
+        }catch (DataIntegrityViolationException e){
+            throw new NotCreatedException(e.getMessage());
         }
-    }
 
-    private SensorDto convertToSensorDto(Sensor sensor){
-        return modelMapper.map(sensor, SensorDto.class);
-    }
-
-    private Sensor convertToSensor(SensorDto sensorDto) throws NotCreatedException {
-
-    if (sensorDto == null || sensorDto.getName() == null) {
-        throw new NotCreatedException("Sensor name must be provided or I cannot find him.");
-    }
-
-
-        return modelMapper.map(sensorDto, Sensor.class);
     }
 
 }

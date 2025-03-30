@@ -1,4 +1,4 @@
-package ru.maslennikov.thirdProject.SensorApp;
+package ru.maslennikov.thirdProject.SensorApp.util;
 
 import org.knowm.xchart.BitmapEncoder;
 import org.knowm.xchart.QuickChart;

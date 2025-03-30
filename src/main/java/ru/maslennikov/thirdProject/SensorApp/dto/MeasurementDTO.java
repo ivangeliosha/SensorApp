@@ -7,7 +7,7 @@ import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotNull;
 
-public class MeasurementDto {
+public class MeasurementDTO {
 
     @NotNull(message = "Value cannot be null")
     @DecimalMin(value = "-100.0", inclusive = true)
